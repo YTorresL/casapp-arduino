@@ -2,14 +2,13 @@ import network
 import gc
 import time
 import urequests as requests
-from mfrc522 import MFRC522
-import machine
+import read as rfid
 
 gc.collect()
 
 SSID = 'SERVIEDUCA WIFI'
 PASSWORD = ''
-URL_API = 'https://602e-190-121-229-254.ngrok-free.app/api/'
+URL_API = 'https://e2f8-190-121-229-254.ngrok-free.app/api/'
 URL_FILTER = 'houses?filters[code][$eq]='
 HOME_SERIAL_KEY = 'A20241125RC522RF'
 URL_FILTER_HOUSE = '&fields[0]=name&fields[1]=code&fields[2]=status'
@@ -43,23 +42,6 @@ USER_STATUS = {
     "IN_HOUSE": 1,
     "OUT_HOUSE": 2,
 }
-
-# Pines para el RFID
-RST_PIN = 0  # Pin RST del RFID
-SS_PIN = 2   # Pin SDA del RFID
-
-# Crear objeto RFID
-rfid = MFRC522(spi=machine.SPI(1, baudrate=1000000, polarity=0, phase=0), ss=machine.Pin(SS_PIN), rst=machine.Pin(RST_PIN))
-
-# Pines del relé
-relay_pins = [5, 4, 3, 1]  # Pines del relé
-
-for pin in relay_pins:
-    machine.Pin(pin, machine.Pin.OUT).value(0)  # Apagar relés al inicio
-
-print("Iniciando...")
-time.sleep(1)
-print("RFID iniciado.")
 
 #Conexión a la red wifi
 
@@ -200,32 +182,43 @@ def deviceStatus(device_code, data):
 #Gestionar que alla alguien en la casa 
 
 def userStatus(data):
-    for access in data['house_access_controls']:
-        for entry in access['house_entry_logs']['data']:
+    for entry in data['house_access_controls']:
+        if entry['status'] == USER_STATUS['IN_HOUSE']:
+            return True
+        else:
+            return False   
+    return False
+
+#Gestionar si esa tarjeta en especifico estaba de entrada o salida
+
+def entryStatus(data, access_code):
+    for entry in data['house_access_controls']:
+        if entry['code'] == access_code:
             if entry['status'] == USER_STATUS['IN_HOUSE']:
                 return True
             else:
                 return False
+        else:
+            return False
     return False
+
+
 
 connectWifi(SSID, PASSWORD)
 
 #Funcion principal que ejecuta siempre espera una tarjeta y verifica si la tarjeta es valida para acceder a la casa asi como si la casa esta activa
 
-def main():
+def main():  
     while True:
         print("Esperando tarjeta...")
-        (status, tag_type) = rfid.request(rfid.REQIDL)
-        if status == rfid.OK:
+        rfidInfo = rfid.do_read()
+        if rfidInfo['status'] == 'ok':
             print("Tarjeta detectada. Leyendo ID...")
-            (status, uid) = rfid.anticoll()
-            if status == rfid.OK:
-                card_id = ''.join([hex(x)[2:].upper() for x in uid])
-                print("ID de la tarjeta:", card_id)
+            if rfidInfo['status'] == 'ok':
                 data_access = fetchApi(URL_FETCH_ACCESS)
                 if data_access is not None:
                     access_data = extractAccess(data_access)
-                    if houseAccess(card_id, access_data):
+                    if houseAccess(rfidInfo['uid'], access_data):
                         device_data = fetchApi(URL_FETCH_DEVICE)
                         if device_data is not None:
                             device_data = extractDevice(device_data)
@@ -233,10 +226,10 @@ def main():
                                 for device in device_data['home_categories']:
                                     for devices in device['devices']:
                                         device_id = devices['attributes']['code']
-                                        if deviceStatus(device_id, devices):
-                                            print("Dispositivo activo")
+                                        if deviceStatus(device_id, device_data):
+                                            print("Dispositivo encendido")
                                         else:
-                                            print("Dispositivo no activo")
+                                            print("Dispositivo apagado")
                             else:
                                 for device in device_data['home_categories']:
                                     for devices in device['devices']:
@@ -247,13 +240,17 @@ def main():
                                             print("Dispositivo apagado")
                         else:
                             print("No se obtuvieron datos")
-                        print("Acceso permitido")
                     else:
                         print("Acceso no permitido")
                 else:
                     print("No se obtuvieron datos")
+                    pass
             else:
                 print("Error al leer la tarjeta")
+                pass
         else:
             print("Error al detectar la tarjeta")
+            pass
         time.sleep(1)
+
+main()
