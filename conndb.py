@@ -12,11 +12,12 @@ PASSWORD = ''
 URL_API = 'https://1470-190-121-229-254.ngrok-free.app/api/'
 URL_FILTER = 'houses?filters[code][$eq]='
 HOME_SERIAL_KEY = 'A20241125RC522RF'
-URL_FILTER_HOUSE = '&fields[0]=name&fields[1]=code&fields[2]=status'
+URL_FILTER_HOUSE = '&fields[0]=name&fields[1]=code&fields[2]=status&populate[user][fields][3]=user'
 URL_RELATIONS_DEVICE = '&populate[home_categories][fields][0]=home_devices&populate[home_categories][populate][home_devices][fields][0]=name&populate[home_categories][populate][home_devices][fields][1]=code&populate[home_categories][populate][home_devices][fields][2]=status'
 URL_RELATIONS_ACCESS = '&populate[house_access_controls][fields][0]=name&populate[house_access_controls][fields][1]=code&populate[house_access_controls][fields][2]=status&populate[house_access_controls][fields][3]=house_entry_logs&populate[house_access_controls][populate][house_entry_logs][fields][0]=entry_time&populate[house_access_controls][populate][house_entry_logs][fields][1]=exit_time&populate[house_access_controls][populate][house_entry_logs][fields][2]=status'
 API_TOKEN = '50d184507fb4b18d5d964a8e4e4a9aabeccc7f82a0abf5583a8efae33d72c424f3b0f636e97394419c76466bb908ceabc48cb67b53de0bcfccbf9deb4277028b67e1e788d2d3f80548d7c2685f7e0bee0ba7f9a9598e26b7e46341c59d5b729b21460b533ca3dbab83570b6fd78ae432495cf304f9b6d921ff3124ec6794dbe5'
 URL_LOG = 'house-entry-logs'
+URL_NOTIFICATION = 'house-notifications'
 
 URL_FETCH_DEVICE = URL_API + URL_FILTER + HOME_SERIAL_KEY + URL_FILTER_HOUSE + URL_RELATIONS_DEVICE
 URL_FETCH_ACCESS = URL_API + URL_FILTER + HOME_SERIAL_KEY + URL_FILTER_HOUSE + URL_RELATIONS_ACCESS
@@ -237,16 +238,35 @@ def changeUserStatus(data, code_user):
                         return False
     return data
 
+#Control de los dispositivos de la casa
+
+def control_relay(device_id, status):
+    relay_pin = RELAY_PIN_CODE[device_id]
+    relay = machine.Pin(relay_pin, machine.Pin.OUT)
+    relay.value(status)
+
+#Enviar notificaciones a la app
+
+def sendNotification(message):
+    URL_FETCH_NOTIFICATION = f"{URL_API}{URL_NOTIFICATION}"
+    data = {
+        "data": {
+            "description": message,
+            'user' : 1
+        }
+    }
+    response = sendApi(URL_FETCH_NOTIFICATION , data)
+    if response is not None:
+        return True
+    else:
+        return
+
 connectWifi(SSID, PASSWORD)
 
 #Funcion principal que ejecuta siempre espera una tarjeta y verifica si la tarjeta es valida para acceder a la casa asi como si la casa esta activa
 
 def main():
     try:
-        
-        relay_pins = [5, 4, 3, 1]
-        for pin in relay_pins:
-            machine.Pin(pin, machine.Pin.OUT).value(1)
         while True:
             print("Esperando tarjeta...")
             try:
@@ -275,13 +295,17 @@ def main():
                                             for devices in device['devices']:
                                                 device_id = devices['attributes']['code']
                                                 if deviceStatus(device_id, devices):
+                                                    control_relay(device_id, 0)
                                                     print("Dispositivo encendido")
                                                 else:
+                                                    control_relay(device_id, 1)
+
                                                     print("Dispositivo apagado")
                                     else:
                                         for device in extract_device['home_categories']:
                                             for devices in device['devices']:
                                                 device_id = devices['attributes']['code']
+                                                control_relay(device_id, 1)
                                                 print("Dispositivo apagado")
                                 else:
                                     print("Error al cambiar el estado del usuario")
