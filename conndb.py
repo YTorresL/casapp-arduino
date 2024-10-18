@@ -8,14 +8,14 @@ gc.collect()
 
 SSID = 'SERVIEDUCA WIFI'
 PASSWORD = ''
-URL_API = 'https://e2f8-190-121-229-254.ngrok-free.app/api/'
+URL_API = 'https://1bc1-190-121-229-254.ngrok-free.app/api/'
 URL_FILTER = 'houses?filters[code][$eq]='
 HOME_SERIAL_KEY = 'A20241125RC522RF'
 URL_FILTER_HOUSE = '&fields[0]=name&fields[1]=code&fields[2]=status'
 URL_RELATIONS_DEVICE = '&populate[home_categories][fields][0]=home_devices&populate[home_categories][populate][home_devices][fields][0]=name&populate[home_categories][populate][home_devices][fields][1]=code&populate[home_categories][populate][home_devices][fields][2]=status'
 URL_RELATIONS_ACCESS = '&populate[house_access_controls][fields][0]=name&populate[house_access_controls][fields][1]=code&populate[house_access_controls][fields][2]=status&populate[house_access_controls][fields][3]=house_entry_logs&populate[house_access_controls][populate][house_entry_logs][fields][0]=entry_time&populate[house_access_controls][populate][house_entry_logs][fields][1]=exit_time&populate[house_access_controls][populate][house_entry_logs][fields][2]=status'
-API_TOKEN = 'ec271c4dacc695cf081eab99b76e933ef18dadfd5af969506db73bda8fb1f2ce5444c690632956025080a0771499a3dd7e9fded12cce9f18ce82053f749aed7c4a12c3cc0e967f486b00652e8046537f358ee70a82a790108e8ca03cb29d5822cdaf4db0d5c2b32469161524aaf5df272c43155e002ed901fb07b715fbccca80'
-
+API_TOKEN = '50d184507fb4b18d5d964a8e4e4a9aabeccc7f82a0abf5583a8efae33d72c424f3b0f636e97394419c76466bb908ceabc48cb67b53de0bcfccbf9deb4277028b67e1e788d2d3f80548d7c2685f7e0bee0ba7f9a9598e26b7e46341c59d5b729b21460b533ca3dbab83570b6fd78ae432495cf304f9b6d921ff3124ec6794dbe5'
+URL_LOG = 'house-entry-logs'
 
 URL_FETCH_DEVICE = URL_API + URL_FILTER + HOME_SERIAL_KEY + URL_FILTER_HOUSE + URL_RELATIONS_DEVICE
 URL_FETCH_ACCESS = URL_API + URL_FILTER + HOME_SERIAL_KEY + URL_FILTER_HOUSE + URL_RELATIONS_ACCESS
@@ -75,7 +75,7 @@ def fetchApi(api_url, timeout = 10):
 
 def sendApi(api_url, data, timeout = 10):
     try:
-        response = requests.post(url = api_url, timeout = timeout, headers = {'Authorization': 'Bearer ' + API_TOKEN}, json = data)
+        response = requests.post(url = api_url, timeout = timeout, headers = {'Content-Type': 'application/json', 'Authorization': 'Bearer ' + API_TOKEN}, json = data)
         if response.status_code == 200:
             return response.json() 
         else:
@@ -89,7 +89,7 @@ def sendApi(api_url, data, timeout = 10):
 
 def updateApi(api_url, data, timeout = 10):
     try:
-        response = requests.put(url = api_url, timeout = timeout, headers = {'Authorization': 'Bearer ' + API_TOKEN}, json = data)
+        response = requests.put(url = api_url, timeout = timeout, headers = {'Content-Type': 'application/json', 'Authorization': 'Bearer ' + API_TOKEN}, json = data)
         if response.status_code == 200:
             return response.json()
         else:
@@ -105,19 +105,23 @@ def extractAccess(json_data):
     if json_data is not None:
         data = json_data['data'][0] 
         attributes = data['attributes']
+ 
         name = attributes['name']
         code = attributes['code']
         status = attributes['status']
         house_access_controls = attributes['house_access_controls']
         data_access = [
             {
+                'id': x['id'],
                 'name': x['attributes']['name'],
                 'code': x['attributes']['code'],
-                'status': x['attributes']['status']
+                'status': x['attributes']['status'],
+                'house_entry_logs': x['attributes']['house_entry_logs']['data']
             } for x in house_access_controls['data']
         ]
 
         return {
+
             'name': name,
             'code': code,
             'status': status,
@@ -183,18 +187,9 @@ def deviceStatus(device_code, data):
 
 def userStatus(data):
     for entry in data['house_access_controls']:
-        if entry['status'] == USER_STATUS['IN_HOUSE']:
-            return True
-        else:
-            return False   
-    return False
-
-#Gestionar si esa tarjeta en especifico estaba de entrada o salida
-
-def entryStatus(data, access_code):
-    for entry in data['house_access_controls']:
-        if entry['code'] == access_code:
-            if entry['status'] == USER_STATUS['IN_HOUSE']:
+        if entry['house_entry_logs']:
+            last_log = entry['house_entry_logs'][-1]
+            if last_log['attributes']['status'] == USER_STATUS['IN_HOUSE']:
                 return True
             else:
                 return False
@@ -202,7 +197,39 @@ def entryStatus(data, access_code):
             return False
     return False
 
+#Verifica el estado del usuario en especifico y cambialo al estado contrario
 
+def changeUserStatus(data, code_user):
+    for entry in data['house_access_controls']:
+        if entry['code'] == code_user:
+           if entry['house_entry_logs']:
+                last_log = entry['house_entry_logs'][-1]
+                URL_FETCH_LOG = f"{URL_API}{URL_LOG}/{last_log['id']}"
+                URL_FETCH_POST_LOG = f"{URL_API}{URL_LOG}"
+                if last_log['attributes']['status'] == USER_STATUS['IN_HOUSE']:
+                    data = {
+                        "data": {
+                            "status": USER_STATUS['OUT_HOUSE'] 
+                        }
+                    }
+                    response = updateApi(URL_FETCH_LOG, data)
+                    if response is not None:
+                        return True
+                    else:
+                        return False
+                else:
+                    data = {
+                        "data": {
+                            "house_access_control": entry['id'],
+                            "status": USER_STATUS['IN_HOUSE']
+                        }
+                    }
+                    response = sendApi(URL_FETCH_POST_LOG, data)
+                    if response is not None:
+                        return True
+                    else:
+                        return False
+    return data
 
 connectWifi(SSID, PASSWORD)
 
@@ -217,40 +244,43 @@ def main():
             if rfidInfo['status'] == 'ok':
                 data_access = fetchApi(URL_FETCH_ACCESS)
                 if data_access is not None:
-                    access_data = extractAccess(data_access)
-                    if houseAccess(rfidInfo['uid'], access_data):
-                        device_data = fetchApi(URL_FETCH_DEVICE)
-                        if device_data is not None:
-                            device_data = extractDevice(device_data)
-                            if userStatus(access_data):
-                                for device in device_data['home_categories']:
-                                    for devices in device['devices']:
-                                        device_id = devices['attributes']['code']
-                                        if deviceStatus(device_id, device_data):
-                                            print("Dispositivo encendido")
-                                        else:
-                                            print("Dispositivo apagado")
+                    extract_access = extractAccess(data_access)
+                    if houseAccess(rfidInfo['uid'], extract_access):
+                        data_device = fetchApi(URL_FETCH_DEVICE)
+                        if data_device is not None:
+                            extract_device = extractDevice(data_device)
+                            if changeUserStatus(extract_access, rfidInfo['uid']):
+                                print("Estado de usuario cambiado")
+                                data_access = fetchApi(URL_FETCH_ACCESS)
+                                extract_access = extractAccess(data_access)
+                                if userStatus(extract_access):
+                                    for device in extract_device['home_categories']:
+                                        for devices in device['devices']:
+                                            device_id = devices['attributes']['code']
+                                            if deviceStatus(device_id, extract_device):
+                                                print("Dispositivo encendido")
+                                            else:
+                                                print("Dispositivo apagado")
+                                else:
+                                    for device in extract_device['home_categories']:
+                                        for devices in device['devices']:
+                                            device_id = devices['attributes']['code']
+                                            if deviceStatus(device_id, extract_device):
+                                                print("Dispositivo apagado")
+                                            else:
+                                                print("Dispositivo apagado")
                             else:
-                                for device in device_data['home_categories']:
-                                    for devices in device['devices']:
-                                        device_id = devices['attributes']['code']
-                                        if deviceStatus(device_id, devices):
-                                            print("Dispositivo apagado")
-                                        else:
-                                            print("Dispositivo apagado")
+                                print("Error al cambiar el estado del usuario")
                         else:
                             print("No se obtuvieron datos")
                     else:
                         print("Acceso no permitido")
                 else:
                     print("No se obtuvieron datos")
-                    pass
             else:
                 print("Error al leer la tarjeta")
-                pass
         else:
             print("Error al detectar la tarjeta")
-            pass
         time.sleep(1)
 
 main()
