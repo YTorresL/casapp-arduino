@@ -23,20 +23,20 @@ URL_FETCH_DEVICE = URL_API + URL_FILTER + HOME_SERIAL_KEY + URL_FILTER_HOUSE + U
 URL_FETCH_ACCESS = URL_API + URL_FILTER + HOME_SERIAL_KEY + URL_FILTER_HOUSE + URL_RELATIONS_ACCESS
 
 ACCESS_STATUS = {
-    "ACTIVED": 1,
-    "INACTIVED": 2,
+    "ACTIVATED": 1,
+    "INACTIVE": 2,
     'DESACTIVATED': 0
 }
 
 DEVICE_STATUS = {
-    "ACTIVED": 1,
-    "INACTIVED": 2,
+    "ACTIVATED": 1,
+    "INACTIVE": 2,
     'DESACTIVATED': 0
 }
 
 HOUSE_STATUS = {
-    "ACTIVED": 1,
-    "INACTIVED": 2,
+    "ACTIVATED": 1,
+    "INACTIVE": 2,
     'DESACTIVATED': 0
 }
 
@@ -170,7 +170,7 @@ def extractDevice(json_data):
 def houseAccess(access_code, data):
     for access in data['house_access_controls']:
         if access['code'] == access_code:
-            if access['status'] == ACCESS_STATUS['ACTIVED'] and data['status'] == HOUSE_STATUS['ACTIVED']:
+            if access['status'] == ACCESS_STATUS['ACTIVATED'] and data['status'] == HOUSE_STATUS['ACTIVATED']:
                 return True
             else:
                 return False
@@ -182,7 +182,7 @@ def houseAccess(access_code, data):
 
 def deviceStatus(device_code, data):
     if data['attributes']['code'] == device_code:
-        if data['attributes']['status'] == DEVICE_STATUS['ACTIVED']:
+        if data['attributes']['status'] == DEVICE_STATUS['ACTIVATED']:
             return True
         else:
             return False
