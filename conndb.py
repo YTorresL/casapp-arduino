@@ -9,13 +9,13 @@ gc.collect()
 
 SSID = 'SERVIEDUCA WIFI'
 PASSWORD = ''
-URL_API = 'https://1470-190-121-229-254.ngrok-free.app/api/'
+URL_API = 'https://c841-38-171-144-49.ngrok-free.app/api/'
 URL_FILTER = 'houses?filters[code][$eq]='
 HOME_SERIAL_KEY = 'A20241125RC522RF'
 URL_FILTER_HOUSE = '&fields[0]=name&fields[1]=code&fields[2]=status&populate[user][fields][3]=user'
 URL_RELATIONS_DEVICE = '&populate[home_categories][fields][0]=home_devices&populate[home_categories][populate][home_devices][fields][0]=name&populate[home_categories][populate][home_devices][fields][1]=code&populate[home_categories][populate][home_devices][fields][2]=status'
 URL_RELATIONS_ACCESS = '&populate[house_access_controls][fields][0]=name&populate[house_access_controls][fields][1]=code&populate[house_access_controls][fields][2]=status&populate[house_access_controls][fields][3]=house_entry_logs&populate[house_access_controls][populate][house_entry_logs][fields][0]=entry_time&populate[house_access_controls][populate][house_entry_logs][fields][1]=exit_time&populate[house_access_controls][populate][house_entry_logs][fields][2]=status'
-API_TOKEN = '50d184507fb4b18d5d964a8e4e4a9aabeccc7f82a0abf5583a8efae33d72c424f3b0f636e97394419c76466bb908ceabc48cb67b53de0bcfccbf9deb4277028b67e1e788d2d3f80548d7c2685f7e0bee0ba7f9a9598e26b7e46341c59d5b729b21460b533ca3dbab83570b6fd78ae432495cf304f9b6d921ff3124ec6794dbe5'
+API_TOKEN = 'b07dbc7cd57ce26801dea597c8f9a612ebe07fa7c501b8eecde0403b5a5449cd00d4314b2cdaf3dcbe845ba049dd431a218216e9dba57fda3960b8c69b0e7db169352df87081a0621c66906119fae740f62dfa3f992f3180d2ff9974e6139754d3053a283c1fcfff1529dbdad496df16505a31005d5c1aa752fd46a32405ab79'
 URL_LOG = 'house-entry-logs'
 URL_NOTIFICATION = 'house-notifications'
 
