@@ -51,6 +51,13 @@ RELAY_PIN_CODE = {
     "A23R3": 3,
     "A23R4": 1
 }
+
+STATE_STATUS = {
+  ERROR: -1,
+  LOADING: 0,
+  SUCCESS: 1,
+  WARNING: 2
+}
     
 #Conexión a la red wifi
 
@@ -259,7 +266,7 @@ def changeUserStatus(data, code_user):
     
     # Devolver False si no se encontró ningún código que coincida o hubo algún fallo
     return False
-    
+
 #Control de los dispositivos de la casa
 
 def control_relay(device_id, status):
@@ -269,12 +276,13 @@ def control_relay(device_id, status):
 
 #Enviar notificaciones a la app
 
-def sendNotification(message, id):
+def sendNotification(message, id, feedback):
     URL_FETCH_NOTIFICATION = f"{URL_API}{URL_NOTIFICATION}"
     data = {
         "data": {
             "description": message,
-            'house' : id
+            'house' : id,
+            'feedback' : feedback
         }
     }
     response = sendApi(URL_FETCH_NOTIFICATION , data)
@@ -313,12 +321,14 @@ def main():
                                     data_access = fetchApi(URL_FETCH_ACCESS)
                                     extract_access = extractAccess(data_access)
                                     if userStatus(extract_access):
+                                        for entry in data['house_access_controls']:
+                                            if entry['code'] == rfidInfo['uid']:
+                                                sendNotification(f"Usuario {entry['name']} ha ingresado a la casa", extract_access['id'], STATE_STATUS['SUCCESS'])    
                                         for device in extract_device['home_categories']:
                                             for devices in device['devices']:
                                                 device_id = devices['attributes']['code']
                                                 if deviceStatus(device_id, devices):
                                                     control_relay(device_id, 0)
-                                                    sendNotification("Dispositivo encendido", extract_access['id'])
                                                     print("Dispositivo encendido")
                                                 else:
                                                     control_relay(device_id, 1)
@@ -331,10 +341,13 @@ def main():
                                                 control_relay(device_id, 1)
                                                 print("Dispositivo apagado")
                                 else:
+                                    sendNotification("Error al cambiar el estado del usuario, intente de nuevo", extract_access['id'], STATE_STATUS['ERROR'])
                                     print("Error al cambiar el estado del usuario")
                             else:
+                                sendNotification("No se obtuvieron datos del dispositivo", extract_access['id'], STATE_STATUS['ERROR'])
                                 print("No se obtuvieron datos del dispositivo")
                         else:
+                            sendNotification("Acceso no permitido, una tarjeta RFID no registrada esta intentando acceder a la casa", extract_access['id'], STATE_STATUS['WARNING'])
                             print("Acceso no permitido")
                     else:
                         print("No se obtuvieron datos de acceso")
