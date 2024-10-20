@@ -335,6 +335,7 @@ def main():
 
                                                     print("Dispositivo apagado")
                                     else:
+                                        sendNotification("No hay nadie en la casa, se apagaron los dispositivos", extract_access['id'], STATE_STATUS['WARNING'])
                                         for device in extract_device['home_categories']:
                                             for devices in device['devices']:
                                                 device_id = devices['attributes']['code']
