@@ -209,35 +209,57 @@ def userStatus(data):
 def changeUserStatus(data, code_user):
     for entry in data['house_access_controls']:
         if entry['code'] == code_user:
-           if entry['house_entry_logs']:
+            # Verificar si house_entry_logs no está vacío
+            if entry['house_entry_logs']:
                 last_log = entry['house_entry_logs'][-1]
                 URL_FETCH_LOG = f"{URL_API}{URL_LOG}/{last_log['id']}"
                 URL_FETCH_POST_LOG = f"{URL_API}{URL_LOG}"
+                
+                # Cambiar estado si el usuario está en casa
                 if last_log['attributes']['status'] == USER_STATUS['IN_HOUSE']:
-                    data = {
+                    data_update = {
                         "data": {
                             "status": USER_STATUS['OUT_HOUSE'] 
                         }
                     }
-                    response = updateApi(URL_FETCH_LOG, data)
+                    response = updateApi(URL_FETCH_LOG, data_update)
                     if response is not None:
                         return True
                     else:
                         return False
+                
+                # Si el último estado es "fuera de casa", hacer POST para cambiar a "en casa"
                 else:
-                    data = {
+                    data_post = {
                         "data": {
                             "house_access_control": entry['id'],
                             "status": USER_STATUS['IN_HOUSE']
                         }
                     }
-                    response = sendApi(URL_FETCH_POST_LOG, data)
+                    response = sendApi(URL_FETCH_POST_LOG, data_post)
                     if response is not None:
                         return True
                     else:
                         return False
-    return data
-
+            
+            # Si no hay logs, crear un nuevo registro
+            else:
+                data_post = {
+                    "data": {
+                        "house_access_control": entry['id'],
+                        "status": USER_STATUS['IN_HOUSE']
+                    }
+                }
+                URL_FETCH_POST_LOG = f"{URL_API}{URL_LOG}"
+                response = sendApi(URL_FETCH_POST_LOG, data_post)
+                if response is not None:
+                    return True
+                else:
+                    return False
+    
+    # Devolver False si no se encontró ningún código que coincida o hubo algún fallo
+    return False
+    
 #Control de los dispositivos de la casa
 
 def control_relay(device_id, status):
