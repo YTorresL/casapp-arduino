@@ -114,7 +114,7 @@ def extractAccess(json_data):
     if json_data is not None:
         data = json_data['data'][0] 
         attributes = data['attributes']
- 
+        id = data['id']
         name = attributes['name']
         code = attributes['code']
         status = attributes['status']
@@ -130,7 +130,7 @@ def extractAccess(json_data):
         ]
 
         return {
-
+            'id': id,
             'name': name,
             'code': code,
             'status': status,
@@ -247,12 +247,12 @@ def control_relay(device_id, status):
 
 #Enviar notificaciones a la app
 
-def sendNotification(message):
+def sendNotification(message, id):
     URL_FETCH_NOTIFICATION = f"{URL_API}{URL_NOTIFICATION}"
     data = {
         "data": {
             "description": message,
-            'user' : 1
+            'house' : id
         }
     }
     response = sendApi(URL_FETCH_NOTIFICATION , data)
@@ -296,6 +296,7 @@ def main():
                                                 device_id = devices['attributes']['code']
                                                 if deviceStatus(device_id, devices):
                                                     control_relay(device_id, 0)
+                                                    sendNotification("Dispositivo encendido", extract_access['id'])
                                                     print("Dispositivo encendido")
                                                 else:
                                                     control_relay(device_id, 1)
