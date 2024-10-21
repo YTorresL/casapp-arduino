@@ -202,7 +202,7 @@ def handle_access(rfidInfo):
             print("No se obtuvieron datos de acceso")
             return
 
-        extract_access = extract_data(access_data, ['name', 'code', 'status'])
+        extract_access = extract_data(access_data, ['name', 'code', 'status', 'house_access_controls'])
         if not houseAccess(rfidInfo['uid'], extract_access):
             send_notification("Acceso no permitido, tarjeta no registrada.", extract_access['id'], STATE_STATUS['WARNING'])
             print("Acceso no permitido")
