@@ -200,16 +200,17 @@ def deviceStatus(device_code, data):
 #Gestionar que alla alguien en la casa 
 
 def userStatus(data):
+    inhouse_count = 0  # Inicializa el contador de logs 'inhouse'
+    
     for entry in data['house_access_controls']:
         if entry['house_entry_logs']:
-            last_log = entry['house_entry_logs'][-1]
-            if last_log['attributes']['status'] == USER_STATUS['IN_HOUSE']:
-                return True
-            else:
-                return False
-        else:
-            return False
-    return False
+            # Recorre todos los logs, no solo el último
+            for log in entry['house_entry_logs']:
+                if log['attributes']['status'] == USER_STATUS['IN_HOUSE']:
+                    inhouse_count += 1  # Incrementa el contador si el status es 'inhouse'
+    
+    # Si el total de logs 'inhouse' es mayor que 1, retorna True
+    return inhouse_count > 1
 
 #Verifica el estado del usuario en especifico y cambialo al estado contrario
 
@@ -323,7 +324,7 @@ def main():
                                     if userStatus(extract_access):
                                         for entry in data['house_access_controls']:
                                             if entry['code'] == rfidInfo['uid']:
-                                                sendNotification(f"Usuario {entry['name']} ha ingresado a la casa", extract_access['id'], STATE_STATUS['SUCCESS'])    
+                                                sendNotification(f"Usuario {entry['name']} ha ingresado a la casa.", extract_access['id'], STATE_STATUS['SUCCESS'])    
                                         for device in extract_device['home_categories']:
                                             for devices in device['devices']:
                                                 device_id = devices['attributes']['code']
@@ -335,20 +336,20 @@ def main():
 
                                                     print("Dispositivo apagado")
                                     else:
-                                        sendNotification("No hay nadie en la casa, se apagaron los dispositivos", extract_access['id'], STATE_STATUS['WARNING'])
+                                        sendNotification("No hay nadie en la casa, se apagaron los dispositivos.", extract_access['id'], STATE_STATUS['WARNING'])
                                         for device in extract_device['home_categories']:
                                             for devices in device['devices']:
                                                 device_id = devices['attributes']['code']
                                                 control_relay(device_id, 1)
                                                 print("Dispositivo apagado")
                                 else:
-                                    sendNotification("Error al cambiar el estado del usuario, intente de nuevo", extract_access['id'], STATE_STATUS['ERROR'])
+                                    sendNotification("Error al cambiar el estado del usuario, intente de nuevo.", extract_access['id'], STATE_STATUS['ERROR'])
                                     print("Error al cambiar el estado del usuario")
                             else:
-                                sendNotification("No se obtuvieron datos del dispositivo", extract_access['id'], STATE_STATUS['ERROR'])
+                                sendNotification("No se obtuvieron datos del dispositivo.", extract_access['id'], STATE_STATUS['ERROR'])
                                 print("No se obtuvieron datos del dispositivo")
                         else:
-                            sendNotification("Acceso no permitido, una tarjeta RFID no registrada esta intentando acceder a la casa", extract_access['id'], STATE_STATUS['WARNING'])
+                            sendNotification("Acceso no permitido, una tarjeta RFID no registrada esta intentando acceder a la casa.", extract_access['id'], STATE_STATUS['WARNING'])
                             print("Acceso no permitido")
                     else:
                         print("No se obtuvieron datos de acceso")
