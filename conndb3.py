@@ -322,7 +322,7 @@ def main():
                                     data_access = fetchApi(URL_FETCH_ACCESS)
                                     extract_access = extractAccess(data_access)
                                     if userStatus(extract_access):
-                                        for entry in data['house_access_controls']:
+                                        for entry in extract_access['house_access_controls']:
                                             if entry['code'] == rfidInfo['uid']:
                                                 sendNotification(f"Usuario {entry['name']} ha ingresado a la casa.", extract_access['id'], STATE_STATUS['SUCCESS'])    
                                         for device in extract_device['home_categories']:
