@@ -46,10 +46,10 @@ USER_STATUS = {
 }
 
 RELAY_PIN_CODE = {
-    "A23R1": 5,
-    "A23R2": 4,
-    "A23R3": 3,
-    "A23R4": 1
+    "B23R1": 5,
+    "B23R2": 4,
+    "B23R3": 3,
+    "B23R4": 1
 }
 
 STATE_STATUS = {
