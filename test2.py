@@ -134,7 +134,7 @@ def house_access_control_status(data, code):
                         users_in_house += 1  # Incrementar contador de usuarios en casa
                 
                 # Verificar código y estado de activación
-                if attributes['code'] == code and attributes['status'] == ACCESS_STATUS['ACTIVATED']:
+                if attributes['code'] == code and attributes['status'] == ACCESS_STATUS['ACTIVATED'] and house['attributes']['status'] == HOUSE_STATUS['ACTIVATED']:
                     log_api_url = f"{BASE_API_URL}{URL_LOG}"
 
                     # Determinar el nuevo estado
@@ -191,7 +191,7 @@ def house_device_control_status(data, access_status):
                     attributes = device.get('attributes', {})
 
                     # Verificar el estado y el código del dispositivo
-                    if attributes.get('status') == DEVICE_STATUS['ACTIVATED'] and attributes.get('code') in RELAY_PIN_CODE:
+                    if attributes.get('status') == DEVICE_STATUS['ACTIVATED'] and attributes.get('code') in RELAY_PIN_CODE and house_attributes.get('status') == HOUSE_STATUS['ACTIVATED']:
                         # Determinar el estado del relay basado en access_status
                         relay_status = 0 if access_status else 1
                         # Controlar el relay del dispositivo

@@ -6,3 +6,5 @@ Los serial key se componen por:
 Letra de abecedario + el año cuando se creo + hora en la que se creo + version de rfid
 
 Requiere: RPi.GPIO, spidev
+
+Agrega en las verificaciones el estado de la casa
