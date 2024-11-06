@@ -9,9 +9,9 @@ gc.collect()
 
 SSID = 'Mickey'
 PASSWORD = 'Alejandra2.'
-BASE_API_URL = 'https://8863-38-171-96-11.ngrok-free.app/api/'
+BASE_API_URL = 'https://fbba-38-171-61-162.ngrok-free.app/api/'
 HOME_SERIAL_KEY = 'A20241125RC522RF'
-URL_FILTER_HOUSE = '&fields[0]=name&fields[1]=code&fields[2]=status'
+URL_FILTER_HOUSE = '&fields[0]=code&fields[1]=status'
 API_TOKEN = 'b07dbc7cd57ce26801dea597c8f9a612ebe07fa7c501b8eecde0403b5a5449cd00d4314b2cdaf3dcbe845ba049dd431a218216e9dba57fda3960b8c69b0e7db169352df87081a0621c66906119fae740f62dfa3f992f3180d2ff9974e6139754d3053a283c1fcfff1529dbdad496df16505a31005d5c1aa752fd46a32405ab79'
 URL_LOG = 'house-entry-logs'
 URL_NOTIFICATION = 'house-notifications'
@@ -151,6 +151,7 @@ def house_access_control_status(data, code):
 
                     # Determinar si el usuario está entrando o saliendo de la casa
                     action = "Saliendo de la casa" if new_status == USER_STATUS['OUT_HOUSE'] else "Entrando a la casa"
+                    actionNotification = "salido de la casa" if new_status == USER_STATUS['OUT_HOUSE'] else "entrado a la casa"
                     print(action)
                     servo_control()
 
@@ -162,12 +163,12 @@ def house_access_control_status(data, code):
                         users_in_house -= 1
 
                     # Retornar True si hay alguien en casa o el nuevo estado es IN_HOUSE
-                    sendNotification(f"Un usuario esta {action}.", house['id'], STATE_STATUS['SUCCESS'])
+                    sendNotification(f"ha {actionNotification}.", house['id'], STATE_STATUS['SUCCESS'], code)
                     return True if users_in_house > 0 else False
 
         # Si ninguna tarjeta coincide
         print("Tarjeta no registrada o no activada", house['id'])
-        sendNotification("Una tarjeta no registrada intento acceder a la casa.", house['id'], STATE_STATUS['WARNING'])
+        sendNotification("Una tarjeta no registrada intento acceder a la casa.", house['id'], STATE_STATUS['WARNING'], code)
         return None  # Cambié el retorno aquí a False para mayor claridad
 
     except Exception as e:
@@ -187,20 +188,21 @@ def house_device_control_status(data, access_status):
                 
                 # Verificar que 'home_devices' está presente en 'category_attributes'
                 home_devices = category_attributes.get('home_devices', {}).get('data', [])
-                for device in home_devices:
-                    attributes = device.get('attributes', {})
+                if home_devices:
+                    for device in home_devices:
+                        attributes = device.get('attributes', {})
 
-                    # Verificar el estado y el código del dispositivo
-                    if attributes.get('status') == DEVICE_STATUS['ACTIVATED'] and attributes.get('code') in RELAY_PIN_CODE and house_attributes.get('status') == HOUSE_STATUS['ACTIVATED']:
-                        # Determinar el estado del relay basado en access_status
-                        relay_status = 0 if access_status else 1
-                        # Controlar el relay del dispositivo
-                        control_relay(attributes['code'], relay_status)
-                        print(f"Dispositivo {attributes['code']} controlado con estado {'OFF' if relay_status else 'ON'}.")
-                        time.sleep(1)
+                        # Verificar el estado y el código del dispositivo
+                        if attributes.get('status') == DEVICE_STATUS['ACTIVATED'] and attributes.get('code') in RELAY_PIN_CODE and house_attributes.get('status') == HOUSE_STATUS['ACTIVATED']:
+                            # Determinar el estado del relay basado en access_status
+                            relay_status = 0 if access_status else 1
+                            # Controlar el relay del dispositivo
+                            control_relay(attributes['code'], relay_status)
+                            print(f"Dispositivo {attributes['code']} controlado con estado {'OFF' if relay_status else 'ON'}.")
+                            time.sleep(1)
 
-                    else:
-                        print(f"Dispositivo {attributes.get('code')} no controlado.")
+                        else:
+                            print(f"Dispositivo {attributes.get('code')} no controlado.")
 
 
         return True
@@ -215,13 +217,14 @@ def control_relay(device_id, status):
     relay = machine.Pin(relay_pin, machine.Pin.OUT)
     relay.value(status)
 
-def sendNotification(message, id, feedback):
+def sendNotification(message, id, feedback, rfid):
     URL_FETCH_NOTIFICATION = f"{BASE_API_URL}{URL_NOTIFICATION}"
     data = {
         "data": {
             "description": message,
             "house" : id,
-            "feedback" : feedback
+            "feedback" : feedback,
+            "rfid" : rfid
         }
     }
     response = api_request('POST', URL_FETCH_NOTIFICATION, data)
@@ -255,7 +258,6 @@ def handle_access(rfidInfo):
         access_data = api_request('GET', URL_FETCH_ACCESS)
 
         if access_data is None:
-            sendNotification("No se obtuvieron datos de acceso.", access_data['data'][0]['id'], STATE_STATUS['ERROR'])
             print("No se obtuvieron datos de acceso")
             return
 
@@ -270,7 +272,7 @@ def handle_access(rfidInfo):
         device_data = api_request('GET', URL_FETCH_DEVICE)
 
         if device_data is None:
-            sendNotification("No se obtuvieron datos de dispositivos.", extract_access[0]['id'], STATE_STATUS['ERROR'])
+            sendNotification("No se obtuvieron datos de dispositivos.", extract_access[0]['id'], STATE_STATUS['ERROR'], rfidInfo['uid'])
             print("No se obtuvieron datos de dispositivos")
             return
         
